@@ -1648,3 +1648,140 @@ if selectedPlayer and selectedPlayer.Parent then
 updateStatsDisplay(selectedPlayer)
 end
 end)
+MainModule.jr_tp_start = function()
+    if MainModule.is_game_active("JumpRope") then
+        MainModule.safe_teleport(Vector3.new(615.284424,192.274277,920.952515))
+        MainModule.notify("JumpRope","Teleported to Start",0.9)
+    else
+        MainModule.notify("JumpRope","Wait for JumpRope!",0.9)
+        PlayErrorSound()
+    end
+    PlayBell()
+end
+
+MainModule.jr_tp_end = function()
+    if MainModule.is_game_active("JumpRope") then
+        MainModule.safe_teleport(Vector3.new(720.896057,198.628311,921.170654))
+        MainModule.notify("JumpRope","Teleported to End",0.9)
+    else
+        MainModule.notify("JumpRope","Wait for JumpRope!",0.9)
+        PlayErrorSound()
+    end
+    PlayBell()
+end
+
+MainModule.jr_delete_rope = function()
+    if MainModule.is_game_active("JumpRope") then
+        for _,o in pairs(workspace:GetDescendants()) do
+            if o.Name == "Rope" and (o:IsA("Model") or o:IsA("Part")) then
+                o:Destroy()
+                MainModule.notify("JumpRope","Rope deleted",0.9)
+                PlayBell()
+                return
+            end
+        end
+        MainModule.notify("JumpRope","Rope not found",0.9)
+        PlayErrorSound()
+    else
+        MainModule.notify("JumpRope","Wait for JumpRope!",0.9)
+        PlayErrorSound()
+    end
+    PlayBell()
+end
+
+MainModule.GlobalAntiFall = { Enabled = false, Platform = nil, Conn = nil }
+
+function MainModule.toggle_global_anti_fall(enabled)
+    MainModule.GlobalAntiFall.Enabled = enabled and true or false
+    if MainModule.GlobalAntiFall.Conn then
+        pcall(function() MainModule.GlobalAntiFall.Conn:Disconnect() end)
+        MainModule.GlobalAntiFall.Conn = nil
+    end
+    if MainModule.GlobalAntiFall.Platform then
+        pcall(function() MainModule.GlobalAntiFall.Platform:Destroy() end)
+        MainModule.GlobalAntiFall.Platform = nil
+    end
+    if not enabled then
+        PlayToggleSound()
+        return true
+    end
+    local function make()
+        local char = MainModule.get_character and MainModule.get_character() or LocalPlayer.Character
+        local rp = char and (char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart)
+        if not rp then return nil end
+        local p = Instance.new("Part")
+        p.Name = HttpService:GenerateGUID(false)
+        p.Size = Vector3.new(12, 1, 12)
+        p.Anchored = true
+        p.CanCollide = true
+        p.Transparency = 0.5
+        p.Material = Enum.Material.SmoothPlastic
+        p.Color = Color3.fromRGB(100, 100, 100)
+        p.CFrame = CFrame.new(rp.Position.X, rp.Position.Y - 3.5, rp.Position.Z)
+        p.Parent = workspace
+        return p
+    end
+    MainModule.GlobalAntiFall.Platform = make()
+    MainModule.GlobalAntiFall.Conn = RunService.Heartbeat:Connect(function()
+        if not MainModule.GlobalAntiFall.Enabled then return end
+        local char = MainModule.get_character and MainModule.get_character() or LocalPlayer.Character
+        local rp = char and (char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart)
+        if not rp then return end
+        if not (MainModule.GlobalAntiFall.Platform and MainModule.GlobalAntiFall.Platform.Parent) then
+            MainModule.GlobalAntiFall.Platform = make()
+        end
+        if MainModule.GlobalAntiFall.Platform then
+            MainModule.GlobalAntiFall.Platform.CFrame = CFrame.new(rp.Position.X, rp.Position.Y - 3.5, rp.Position.Z)
+            MainModule.GlobalAntiFall.Platform.Transparency = 0.5
+        end
+    end)
+    PlayToggleSound()
+    return true
+end
+
+MainModule.JumpRopeAntiFall = {Enabled=false, Platform=nil, Conn=nil}
+
+MainModule.toggle_jump_rope_anti_fall = function(enabled)
+    local toggleRef = MainModule.ToggleRefs.JumpRopeAntiFall
+
+    if enabled then
+        if not MainModule.can_enable_toggle("JumpRope", "Anti Fall", toggleRef) then
+            return false
+        end
+    end
+
+    if MainModule.JumpRopeAntiFall.Conn then MainModule.JumpRopeAntiFall.Conn:Disconnect() end
+    if MainModule.JumpRopeAntiFall.Platform then MainModule.JumpRopeAntiFall.Platform:Destroy() end
+    MainModule.JumpRopeAntiFall.Enabled = enabled
+    if enabled then
+        local function create()
+            local c = MainModule.get_character()
+            if not c then return nil end
+            local rp = MainModule.get_root_part(c)
+            if not rp then return nil end
+            local p = Instance.new("Part")
+            p.Name = HttpService:GenerateGUID(false)
+            p.Size = Vector3.new(10000,1,10000)
+            p.Position = Vector3.new(rp.Position.X, rp.Position.Y-5, rp.Position.Z)
+            p.Anchored = true
+            p.CanCollide = true
+            p.Transparency = 0.5
+            p.Parent = workspace
+            return p
+        end
+        MainModule.JumpRopeAntiFall.Platform = create()
+        MainModule.JumpRopeAntiFall.Conn = RunService.Heartbeat:Connect(function()
+            if not MainModule.JumpRopeAntiFall.Enabled then return end
+            if not MainModule.is_game_active("JumpRope") then
+                MainModule.disable_toggle("JumpRopeAntiFall")
+                return
+            end
+            if not (MainModule.JumpRopeAntiFall.Platform and MainModule.JumpRopeAntiFall.Platform.Parent) then
+                MainModule.JumpRopeAntiFall.Platform = create()
+            end
+        end)
+    else
+    end
+    PlayToggleSound()
+    return true
+end
